@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "probedesign"
+version = "2.0.0"
+description = "FISH probe design studio: smFISH / smiFISH / HCR 3.0 / SNAIL with host-genome filtering"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "J" }]
+dependencies = [
+  "streamlit>=1.49",
+  "pandas>=2.0",
+  "numpy>=1.24",
+  "biopython>=1.83",
+  "primer3-py>=2.0",
+  "plotly>=5.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["probedesign", "probedesign.schemes"]

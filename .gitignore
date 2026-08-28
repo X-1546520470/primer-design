@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+extracted/
+.DS_Store
+.venv/
+*_dp5.ps
+indices/
+genomes/
+genome_registry.json
+data/smoke/results/
