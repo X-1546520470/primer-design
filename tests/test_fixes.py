@@ -149,5 +149,32 @@ class SnailArmStrandTests(unittest.TestCase):
         ))
 
 
+class ScoreMinRegressionTests(unittest.TestCase):
+    """v1 默认 G,20,8 下 18/20-mer 完美匹配无法比对（命中漏计）。"""
+
+    def test_perfect_18mer_alignment_is_counted(self) -> None:
+        import sys
+        from pathlib import Path
+        project = Path(__file__).resolve().parent.parent
+        genome_path = project / "genomes" / "mtb_h37rv.fna"
+        index_path = project / "indices" / "bcg_pasteur"
+        if not genome_path.is_file() or not index_path.with_suffix(".1.bt2").exists() \
+                and not (project / "indices" / "bcg_pasteur.1.bt2").exists():
+            self.skipTest("本机基因组/索引数据不存在")
+        from probedesign.alignment import align_probes_to_index
+        from probedesign.utils import reverse_complement
+        from Bio.Seq import Seq
+        from Bio.SeqRecord import SeqRecord
+
+        seq = "".join(l.strip() for l in genome_path.open() if not l.startswith(">"))
+        # MTB prpC (Rv1131) 区域，BCG 中有完美匹配位点
+        window = seq[1256132 - 1 : 1256132 - 1 + 18]
+        records = [SeqRecord(Seq(reverse_complement(window)), id="p18", description="")]
+        counts = align_probes_to_index(
+            records, str(index_path), score_min="C,36,0"
+        )
+        self.assertGreaterEqual(counts["p18"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

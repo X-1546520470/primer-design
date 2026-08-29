@@ -55,7 +55,11 @@ class DesignParams:
 
     # ---- 特异性过滤（比对命中数阈值）----
     bowtie2_preset: str = "--very-sensitive-local"  # 灵敏度预设
-    bowtie2_score_min: str = "G,20,8"  # 最低比对得分：G,20,8 ≈ 匹配≥20 分
+    # 最低比对得分：C,36,0 = 常数 36 分（local 模式完美匹配每碱基 +2 分，
+    # 即 18-mer 必须完美匹配才计入，24-mer 容忍 1 处错配）。
+    # v1 默认 G,20,8 是随长度增长的对数函数，对 18–22 nt 短探针过严——
+    # 实测 18/20-mer 完美匹配也无法比对，导致命中数漏计、宿主过滤失敏。
+    bowtie2_score_min: str = "C,36,0"
     max_target_hits: int = 10   # 靶标基因组最大命中数（超出视为重复序列）
     max_host_hits: int = 0      # 背景/宿主基因组最大命中数（0 = 零容忍）
 
