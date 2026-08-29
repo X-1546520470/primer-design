@@ -98,3 +98,5 @@ PYTHONPATH=src /opt/anaconda3/envs/Probe/bin/python -m pytest tests/ -q
 ## 许可证
 
 MIT
+
+📖 详细操作指引见 [使用说明.md](使用说明.md)（含 MTB/BCG/MSM 基因组数据说明与设计流程）。
