@@ -1,4 +1,6 @@
 #!/bin/zsh
+# ProbeStudio 双击启动脚本：切换到 Probe conda 环境（含 bowtie2），
+# 工作目录固定为脚本所在目录（基因组/索引/注册表都在这里）。
 set -euo pipefail
 
 APP_DIR="${0:A:h}"
@@ -14,4 +16,4 @@ fi
 export PYTHONNOUSERSITE=1
 export PATH="/opt/anaconda3/envs/Probe/bin:$PATH"
 cd "$APP_DIR"
-exec "$APP_PYTHON" -m streamlit run "$APP_DIR/app.py"
+exec "$APP_PYTHON" -m probedesign

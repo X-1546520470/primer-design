@@ -1,4 +1,16 @@
-"""Output reporting for probe design runs."""
+"""设计结果输出：把 Probe 列表整理为 DataFrame 并写 CSV。
+
+probes_to_dataframe 生成的列：
+    通用列      probe_id / start / stop / length / sequence / gc_content /
+                tm / hairpin_tm / target_hits / host_hits / score / passed /
+                failure_reasons
+    方案专属列  smiFISH   full_sequence（探针+linker+readout）等
+                HCR3      P1_sequence / P2_sequence / channel / gibbs_fe /
+                          dTm / 两条半探针
+                SNAIL     primer_sequence / padlock_sequence / 双臂序列 / UGI
+
+write_outputs 一次写出 all_candidates.csv、probes_passed.csv、summary.json。
+"""
 
 from __future__ import annotations
 

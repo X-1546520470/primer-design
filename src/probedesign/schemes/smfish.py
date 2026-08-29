@@ -1,4 +1,15 @@
-"""smFISH probe design scheme."""
+"""smFISH 探针设计（最基础的方案，也是 smiFISH 的底层）。
+
+设计流程 design_smfish：
+    1. 读入靶序列（按 strand 决定是否反向互补）；
+    2. mining：滑动窗口枚举候选（长度 min_length–max_length）；
+    3. filters：GC / 同聚碱基 / Tm / 发卡热力学过滤；
+    4. 比对：候选比对到靶标基因组（检测重复）与各背景基因组（宿主过滤）；
+    5. scoring：按特异性 + Tm/GC 偏好打分；
+    6. selection：按分数贪心选取互不重叠的最终集合（可限数量）。
+
+产物：每条探针一条反义寡核苷酸，sequence 字段即为订购序列。
+"""
 
 from __future__ import annotations
 
@@ -23,7 +34,7 @@ def design_smfish(
     params: DesignParams | None = None,
     threads: int = 1,
 ) -> DesignResult:
-    """Run a complete smFISH probe design with host filtering."""
+    """执行一次完整的 smFISH 设计（含宿主基因组过滤）。"""
     params = params or DesignParams(design_scheme="smFISH")
 
     targets = load_fasta(target_fasta)

@@ -1,4 +1,20 @@
-"""Bowtie2 alignment wrappers and SAM parsing."""
+"""bowtie2 比对封装与 SAM 命中计数。
+
+特异性过滤的基础设施：把候选探针比对到靶标/背景基因组的 bowtie2 索引，
+统计每条探针的命中数。
+
+关键实现细节：
+    - 比对参数：--very-sensitive-local + --score-min G,20,8（≈ 匹配 ≥20 分，
+      即 18–24 nt 探针容忍少量错配）+ -k 100（最多报告 100 个比对位点）；
+    - 命中计数必须**包含 secondary 比对**（SAM flag 0x100）：-k 模式下每个
+      位点一条记录，只有一条是 primary，其余全部带 0x100 标志。v1 的解析器
+      把 secondary 全部跳过，导致每条探针最多计 1 次命中，重复序列与宿主
+      过滤实际失效——这是 v2 修复的最重要 bug；
+    - 探针 ID 含冒号，bowtie2 的 QNAME 处理不可靠，因此提交比对前先把
+      ID 映射为纯数字，比对完再映射回来；
+    - bowtie2 可执行文件优先从当前 conda 环境的 bin 目录查找（sys.executable
+      同级），找不到再查 PATH；全部错误包装为 AlignmentError 并保留 stderr。
+"""
 
 from __future__ import annotations
 
@@ -41,28 +57,18 @@ def run_bowtie2(
     k: int = 100,
     threads: int = 1,
 ) -> Dict[str, int]:
-    """Align sequences to a Bowtie2 index and return hit counts per sequence ID.
+    """把序列比对到 bowtie2 索引，返回每条序列的命中数。
 
-    Parameters
-    ----------
-    sequences : List[SeqRecord]
-        Sequences to align.
-    index_prefix : str
-        Path prefix of the Bowtie2 index.
-    score_min : str
-        Bowtie2 --score-min argument.
-    preset : str
-        Bowtie2 sensitivity preset.
-    k : int
-        Report up to k alignments per read.
-    threads : int
-        Bowtie2 threads.
+    参数：
+        sequences    待比对的序列记录（ID 会映射为数字后提交）
+        index_prefix bowtie2 索引前缀（不含 .1.bt2 等后缀）
+        score_min    --score-min 参数，默认 G,20,8
+        preset       灵敏度预设，默认 --very-sensitive-local
+        k            每条读取最多报告的比对位点数
+        threads      bowtie2 线程数
 
-    Returns
-    -------
-    Dict[str, int]
-        Mapping from sequence ID to number of reported alignments.
-        Unmapped sequences get 0.
+    返回：{序列 ID: 命中位点数}；未比对上的为 0。
+    比对在临时目录进行，FASTA 与 SAM 用完即删。
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         fasta_path = os.path.join(tmpdir, "queries.fa")
@@ -165,7 +171,7 @@ def align_probes_to_index(
     score_min: str = "G,20,8",
     threads: int = 1,
 ) -> Dict[str, int]:
-    """Convenience wrapper that returns hit counts indexed by probe_id."""
+    """便捷封装：提交探针列表并返回 {probe_id: 命中数}，索引缺失时给出明确报错。"""
     if not os.path.exists(index_prefix + ".1.bt2") and not os.path.exists(
         index_prefix + ".1.bt2l"
     ):

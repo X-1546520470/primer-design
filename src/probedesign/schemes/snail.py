@@ -1,8 +1,22 @@
-"""SNAIL-FISH probe design scheme.
+"""SNAIL FISH 探针设计（primer + padlock 双臂结构）。
 
-SNAIL-FISH produces a primer oligo and a 5'-phosphorylated padlock oligo for
-each target position. The two 20-nt target-binding arms are separated by a
-short spacer on the target RNA.
+SNAIL（Signal amplification by exchange reaction...）每个靶标位置产出两条寡核苷酸：
+    primer  = 臂1（20 nt 靶结合臂）+ 3′ linker
+    padlock = 5′ anchor + 臂2（20 nt 靶结合臂）+ spacer + UGI 条码 + spacer + 3′ anchor
+两条臂在靶 RNA 上相邻结合（臂间只隔 arm_spacer 个 nt），padlock 的 5′ 磷酸化
+末端与 primer 连接后形成环，作为滚环扩增（RCA）模板。
+
+过滤特点：
+    - 双臂独立检查 GC（默认 40–63%）/ 重复基序 AAAA·CCCC·GGGG·TTTT /
+      发卡 dG（≤ −9 kcal/mol 即淘汰）；
+    - 三级特异性检查：整个结合区（cassette）、primer、padlock 分别比对
+      靶标与背景基因组，任一级超标即淘汰；
+    - 选点时保证相邻探针的双臂互不重叠（最小跨度 = 2×臂长 + 臂间隔）。
+
+链向说明（v2 修正）：结合臂保存为**反义序列**（cassette 的直接切片），
+即真正合成并杂交到靶 RNA 的序列。v1 曾把臂还原成正链再组装，得到的
+primer/padlock 无法与 RNA 靶标杂交。组装结构本身按项目设计文档保留；
+如与你的 SNAIL notebook 有出入，以 notebook 为准并反馈调整。
 """
 
 from __future__ import annotations
@@ -30,6 +44,12 @@ from probedesign.selection import select_non_overlapping
 
 
 def _build_snail_probe(target_seq: str, start: int, params: DesignParams) -> Probe | None:
+    """在 start 位置构造一个 SNAIL 候选。
+
+    靶标正链布局：[臂1(20nt)][间隔(arm_spacer)][臂2(20nt)]
+    cassette（探针反义序列）= rc(臂1 + 间隔 + 臂2)，共 41 nt 左右。
+    probe.start/stop 覆盖整个双臂区间。
+    """
     """Create a SNAIL-FISH candidate with paired arms and full cassette."""
     arm_len = params.snail_arm_length
     spacer = params.snail_arm_spacer
@@ -53,7 +73,7 @@ def _build_snail_probe(target_seq: str, start: int, params: DesignParams) -> Pro
 
 
 def _mine_snail_candidates(target_seq: str, params: DesignParams) -> List[Probe]:
-    """Mine all possible SNAIL-FISH paired-arm candidates."""
+    """按 1 nt 步长枚举全部双臂候选（长度固定为 2×臂长 + 间隔）。"""
     arm_len = params.snail_arm_length
     spacer = params.snail_arm_spacer
     total = 2 * arm_len + spacer
@@ -105,7 +125,13 @@ def _filter_arms(probe: Probe, params: DesignParams) -> bool:
 
 
 def _assemble_oligos(probe: Probe, params: DesignParams) -> None:
-    """Build full primer and padlock oligos from a passing SNAIL candidate."""
+    """由通过过滤的双臂组装最终订购序列。
+
+    primer  = 臂1(反义) + 3′ linker
+    padlock = 5′ anchor + 臂2(反义) + spacer1 + UGI 条码 + spacer2 + 3′ anchor
+    UGI 未提供时以 N 占位（订购前需替换为实际条码）；
+    padlock 订购时需加 5′ 磷酸化修饰 /5Phos/（GUI 导出表已标注）。
+    """
     ugi = params.snail_ugi_sequence or "NNNNNNNNNNNNNNNNNNNNNN"
     primer = probe.metadata["arm1_sequence"] + params.snail_primer_end
     padlock = (
@@ -130,7 +156,12 @@ def _check_component_specificity(
     params: DesignParams,
     threads: int,
 ) -> None:
-    """Align a set of derived sequences (primer/padlock/cassette) and mark failures."""
+    """对派生序列（primer / padlock）做独立比对检查（SNAIL 第三级特异性）。
+
+    设计意图：结合区没问题不代表整条 oligo 没问题——linker/anchor/条码
+    也可能带来交叉反应。任一组件在背景基因组上超标即淘汰整条候选，
+    失败原因记为 "{label}_host_hits[...]" 便于界面区分。
+    """
     from probedesign.alignment import align_probes_to_index
 
     seq_records = [
@@ -175,7 +206,7 @@ def design_snail(
     params: DesignParams | None = None,
     threads: int = 1,
 ) -> DesignResult:
-    """Run a SNAIL-FISH primer + padlock design."""
+    """执行一次 SNAIL FISH 设计（双臂过滤 + 三级特异性 + 双臂间距选点）。"""
     params = params or DesignParams(design_scheme="SNAIL-FISH")
 
     target = maybe_reverse_complement_target(load_first_target(target_fasta), params)

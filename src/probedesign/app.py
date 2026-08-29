@@ -1,9 +1,26 @@
-"""ProbeStudio — FISH probe design GUI (smFISH / smiFISH / HCR 3.0 / SNAIL)."""
+"""ProbeStudio —— FISH 探针设计 GUI（Streamlit 单页应用）。
+
+页面结构：
+    侧边栏  ① 靶序列（粘贴 FASTA 或选已注册索引）② 设计方案（四选一，
+            参数模块随方案切换）③ 方案参数（每项带解释）④ 宿主/背景基因组
+            多选 + 开始设计按钮
+    主区    基因组与索引管理（上传 FASTA → 建索引 → 注册）
+            设计结果：指标卡 / 漏斗图 / 结果表 / 覆盖图 / 分布图 /
+            单条详情 / 导出（CSV + IDT 订购表 + 参数 JSON）
+
+数据目录（跟随启动时的工作目录，双击 launch.command 即项目目录）：
+    genome_registry.json  已注册基因组清单
+    genomes/              基因组 FASTA（含上传的）
+    indices/              bowtie2 索引
+
+启动：双击项目目录中的 launch.command，或 `python -m probestudio`。
+"""
 
 from __future__ import annotations
 
 import html as html_module
 import json
+import os
 from dataclasses import asdict
 from pathlib import Path
 
@@ -12,14 +29,16 @@ import streamlit as st
 
 from probedesign import __version__
 from probedesign.alignment import AlignmentError, build_bowtie2_index
-from probedesign.models import DesignParams, DesignResult, ReferenceGenome
+from probedesign.models import DesignParams, DesignResult, Probe, ReferenceGenome
 from probedesign.pipeline import run_design
 from probedesign.report import probes_to_dataframe
 
-APP_DIR = Path(__file__).resolve().parent
-REGISTRY_PATH = APP_DIR / "genome_registry.json"
-GENOME_DIR = APP_DIR / "genomes"
-INDICES_DIR = APP_DIR / "indices"
+# 数据目录：默认取当前工作目录（launch.command 会 cd 到项目目录）；
+# 也可用环境变量 PROBESTUDIO_HOME 指定其他位置。
+DATA_DIR = Path(os.environ.get("PROBESTUDIO_HOME", Path.cwd()))
+REGISTRY_PATH = DATA_DIR / "genome_registry.json"
+GENOME_DIR = DATA_DIR / "genomes"
+INDICES_DIR = DATA_DIR / "indices"
 
 SCHEME_INFO = {
     "smFISH": {
@@ -376,7 +395,7 @@ def render_funnel(result: DesignResult) -> None:
 
     THERMO_KEYS = ("GC=", "Tm=", "homopolymer", "hairpin", "dTm", "Gibbs=")
 
-    def has_reason(probe: Probe, *keys: str) -> bool:
+    def has_reason(probe: "Probe", *keys: str) -> bool:
         return any(key in reason for reason in probe.failure_reasons for key in keys)
 
     total = len(result.probes)

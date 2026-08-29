@@ -1,4 +1,15 @@
-"""Post-processing: spacing, de-duplication, downsampling."""
+"""筛选后处理：间距筛选与均匀降采样。
+
+select_non_overlapping：
+    1. 取出全部通过过滤的候选，按分数从高到低排序；
+    2. 贪心遍历：与已选集合在"区间 + min_gap"意义上都不重叠的入选；
+       注意是真正的区间重叠判断（v1 只比较起点距离，会放过尾部重叠的探针）；
+    3. 若超过 desired_probe_count，再按位置均匀降采样。
+
+equal_space_downsample：
+    在候选覆盖的范围 [first.start, last.start] 上等距取 n 个位置，
+    各取离目标位置最近的探针，保证最终集合在靶标上均匀铺开。
+"""
 
 from __future__ import annotations
 
@@ -8,7 +19,7 @@ from probedesign.models import Probe
 
 
 def _intervals_too_close(a: Probe, b: Probe, min_gap: int) -> bool:
-    """True if two probe intervals overlap or sit closer than min_gap."""
+    """判断两个探针区间是否重叠或间距小于 min_gap（标准区间相交判定）。"""
     return a.start < b.stop + min_gap and b.start < a.stop + min_gap
 
 

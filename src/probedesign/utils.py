@@ -1,4 +1,14 @@
-"""Sequence utilities."""
+"""序列工具：反向互补、GC 分数、同聚碱基检测与最近邻 Tm 计算。
+
+Tm 公式（SantaLucia 1998 统一最近邻模型）：
+
+    ΔH = Σ 堆积焓 + 起始焓 + 末端 A/T 修正
+    ΔS = Σ 堆积熵 + 起始熵 + 末端 A/T 修正 + 盐修正（0.368·(N−1)·ln[Na⁺]）
+    Tm = 1000·ΔH / (ΔS + R·ln(Ct/4)) − 273.15 − 甲酰胺×0.65
+
+其中 Ct/4 为非自互补双链的浓度项；单价盐有效浓度可用 Mg²⁺/dNTP 做von Ahsen
+校正（na + 120·√(mg − dntp)）。参数表见 config.DNA_NN3。
+"""
 
 from __future__ import annotations
 
@@ -22,12 +32,16 @@ _GAS_CONSTANT = 1.9872041  # cal / (mol * K)
 
 
 def reverse_complement(seq: str) -> str:
-    """Return the reverse complement of a DNA/RNA sequence."""
+    """返回序列的反向互补链（支持 ACGTUN 与小写）。
+
+    探针序列约定：探针与靶 RNA 反义配对，因此"靶标窗口的正链序列"取反向
+    互补后才得到真正合成、能杂交上去的探针序列。
+    """
     return seq.translate(COMPLEMENT)[::-1]
 
 
 def gc_content(seq: str) -> float:
-    """Return GC fraction (0-1) of a sequence."""
+    """返回 GC 分数（0-1 的小数；界面展示时乘 100）。空序列返回 0。"""
     if not seq:
         return 0.0
     seq = seq.upper()
@@ -35,7 +49,10 @@ def gc_content(seq: str) -> float:
 
 
 def has_homopolymer(seq: str, max_run: int = 4) -> bool:
-    """Return True if sequence contains a homopolymer run longer than max_run."""
+    """检测是否存在长度超过 max_run 的连续相同碱基（如 GGGGG）。
+
+    长同聚串会引物滑移 / 非特异结合，是探针设计的常规过滤项。
+    """
     if max_run <= 0:
         return False
     seq = seq.upper()
@@ -53,7 +70,10 @@ def has_homopolymer(seq: str, max_run: int = 4) -> bool:
 def salt_correction(
     na: float = DEFAULT_NA, mg: float = DEFAULT_MG, dntp: float = DEFAULT_DNTP
 ) -> float:
-    """Effective monovalent concentration (von Ahsen 2001 Mg2+/dNTP correction)."""
+    """计算有效单价盐浓度（von Ahsen 2001）：Na + 120·√(Mg²⁺ − dNTP)。
+
+    Mg²⁺ 对双链稳定的贡献可折算为高价单价盐；被 dNTP 螯合的部分不参与。
+    """
     return na + 120.0 * math.sqrt(max(0.0, mg - dntp))
 
 
@@ -66,11 +86,15 @@ def calc_tm(
     formamide_pct: float = DEFAULT_FORMAMIDE_PCT,
     formamide_factor: float = DEFAULT_FORMAMIDE_FACTOR,
 ) -> float:
-    """Melting temperature via the SantaLucia 1998 nearest-neighbour model.
+    """计算熔解温度 Tm（°C）——SantaLucia 1998 统一最近邻模型。
 
-    Uses the Ct/4 concentration term (non-self-complementary duplex
-    assumption) and the linear Mg2+/dNTP salt correction. Formamide lowers
-    Tm linearly by ``formamide_factor`` per percent.
+    计算步骤：
+        1. 从起始项 (0.2, -5.7) 出发；
+        2. 每端为 A/T 时加末端罚分 (+2.2, +6.9)；
+        3. 累加全部相邻二核苷酸的堆积焓/熵（config.DNA_NN3）；
+        4. 熵做盐修正：ΔS += 0.368·(N−1)·ln[单价盐]；
+        5. 浓度项取 ln(Ct/4)，即非自互补双链假设；
+        6. 甲酰胺按 0.65 °C/% 线性降低 Tm。
     """
     seq = seq.upper()
     if len(seq) == 0:

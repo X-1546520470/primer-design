@@ -1,4 +1,12 @@
-"""Shared helpers for scheme-specific design."""
+"""各设计方案共享的辅助函数。
+
+内容分三组：
+    1. RNA/DNA 杂交体 Gibbs 自由能（Sugimoto 1995 参数）—— HCR 3.0 的
+       核心过滤指标；盐修正沿用 SantaLucia 式线性项；
+    2. 靶序列加载与链向处理（strand == '-' 时取反向互补）；
+    3. 比对过滤封装：把候选（或 SNAIL 派生的 primer/padlock）比对到
+       靶标与背景基因组并按阈值淘汰。
+"""
 
 from __future__ import annotations
 
@@ -13,7 +21,9 @@ from probedesign.models import DesignParams, Probe, ReferenceGenome
 from probedesign.utils import gc_content, reverse_complement
 
 
-# Sugimoto 1995 RNA/DNA parameters (kcal/mol and cal/(mol*K)).
+# Sugimoto 1995 RNA/DNA 杂交体最近邻参数（键为小写二核苷酸）。
+# dH 单位 kcal/mol，dS 单位 cal/(mol*K)。用于估算探针与靶 RNA 杂交体的
+# 结合自由能（HCR 官方推荐窗口约 −50 ~ −70 kcal/mol）。
 _SUGIMOTO_DEL_H = {
     "aa": -7.8, "ac": -5.9, "ag": -9.1, "at": -8.3,
     "ca": -9.0, "cc": -9.3, "cg": -16.3, "ct": -7.0,
@@ -29,21 +39,13 @@ _SUGIMOTO_DEL_S = {
 
 
 def calc_gibbs_rna_dna(sequence: str, temp_c: float = 37.0, salt_m: float = 0.33) -> float:
-    """Gibbs free energy of an RNA/DNA hybrid using Sugimoto 1995 parameters.
+    """计算 RNA/DNA 杂交体的 Gibbs 自由能（kcal/mol），值越负结合越强。
 
-    Parameters
-    ----------
-    sequence : str
-        DNA probe sequence (antisense to RNA target). Treated as RNA complement.
-    temp_c : float
-        Temperature in Celsius.
-    salt_m : float
-        Monovalent salt concentration in M.
+        ΔG = ΔH − T·ΔS + 盐修正(−0.114·N·ln[Na⁺])
 
-    Returns
-    -------
-    float
-        Gibbs free energy in kcal/mol.
+    参数 sequence 为 DNA 探针序列（与 RNA 靶互补）；杂交体按 RNA/DNA
+    双链处理，采用 Sugimoto 1995 最近邻参数。HCR 3.0 用它筛选
+    "结合强度适中"的 tile：太弱杂交不上，太强则背景高。
     """
     seq = sequence.lower()
     if len(seq) < 2:
@@ -65,13 +67,13 @@ def calc_gibbs_rna_dna(sequence: str, temp_c: float = 37.0, salt_m: float = 0.33
 
 
 def calc_hairpin_dg(sequence: str) -> float:
-    """Return primer3 hairpin free energy in kcal/mol."""
+    """primer3 计算的发卡自由能（kcal/mol）；SNAIL 双臂过滤用。"""
     result = calc_hairpin(sequence)
     return result.dg / 1000.0 if hasattr(result, "dg") else 0.0
 
 
 def has_repeat_motif(sequence: str, motifs: List[str] | None = None) -> bool:
-    """Return True if sequence contains any forbidden repeat motif."""
+    """检测是否含有禁用重复基序；SNAIL 标准为 AAAA/CCCC/GGGG/TTTT。"""
     if motifs is None:
         motifs = ["AAAA", "CCCC", "GGGG", "TTTT"]
     seq = sequence.upper()

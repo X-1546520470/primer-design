@@ -22,6 +22,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 
+[project.scripts]
+probestudio = "probedesign.__main__:main"
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 packages = ["probedesign", "probedesign.schemes"]

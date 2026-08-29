@@ -1,7 +1,12 @@
-"""smiFISH probe design scheme.
+"""smiFISH 探针设计 = smFISH + 共享 readout 延伸段（FLAP）。
 
-smiFISH is smFISH plus a shared terminal readout extension that binds a
-fluorescent secondary probe.
+smiFISH 的探针本身不带荧光：每条探针末端带一段相同的 readout 延伸段，
+荧光二级探针与延伸段杂交发声。好处是换荧光颜色只需换二级探针。
+
+实现上复用 design_smfish 的全部流程，仅在最后给每条探针拼接：
+    5′ 端方案：readout + linker + 探针
+    3′ 端方案：探针 + linker + readout
+拼接结果存入 metadata["full_sequence"]，订购时使用完整序列。
 """
 
 from __future__ import annotations
@@ -19,7 +24,7 @@ def design_smifish(
     params: DesignParams | None = None,
     threads: int = 1,
 ) -> DesignResult:
-    """Run smFISH design, then append a shared readout extension to all probes."""
+    """先跑 smFISH 设计，再为所有探针拼接共享 readout 延伸段。"""
     params = params or DesignParams(design_scheme="smiFISH")
     result = design_smfish(target_fasta, target_index, host_genomes, params, threads=threads)
 

@@ -1,4 +1,14 @@
-"""Probe scoring and specificity filtering."""
+"""特异性过滤与打分排序。
+
+特异性基于 bowtie2 比对命中数：
+    - 靶标基因组命中数 > max_target_hits：候选落在重复序列上，淘汰；
+    - 背景/宿主基因组命中数 > max_host_hits：会错结合到其他物种，淘汰
+      （默认 max_host_hits=0，即任何命中都淘汰）。
+
+打分公式（纯描述性，用于贪心筛选的优先级，不做合格判定）：
+    score = 1/(1 + 靶标命中 + 背景命中) − |Tm − 60|/20 − |GC − 0.5|×2
+即：命中越少越好，Tm 越接近 60 °C 越好，GC 越居中越好。
+"""
 
 from __future__ import annotations
 
