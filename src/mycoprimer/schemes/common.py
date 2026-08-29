@@ -17,8 +17,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from primer3 import calc_hairpin
 
-from probedesign.models import DesignParams, Probe, ReferenceGenome
-from probedesign.utils import gc_content, reverse_complement
+from mycoprimer.models import DesignParams, Probe, ReferenceGenome
+from mycoprimer.utils import gc_content, reverse_complement
 
 
 # Sugimoto 1995 RNA/DNA 杂交体最近邻参数（键为小写二核苷酸）。
@@ -108,7 +108,7 @@ def apply_host_alignment(
 
     Mutates probes in place. Skips probes that already failed.
     """
-    from probedesign.alignment import align_probes_to_index
+    from mycoprimer.alignment import align_probes_to_index
 
     seq_records = [
         SeqRecord(Seq(p.sequence), id=p.probe_id, description="") for p in probes if p.passed
@@ -137,7 +137,7 @@ def apply_target_alignment(
     threads: int,
 ) -> None:
     """Align probes to target genome and record target hits, filtering by max_target_hits."""
-    from probedesign.alignment import align_probes_to_index
+    from mycoprimer.alignment import align_probes_to_index
 
     seq_records = [
         SeqRecord(Seq(p.sequence), id=p.probe_id, description="") for p in probes if p.passed

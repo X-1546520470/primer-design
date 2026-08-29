@@ -1,4 +1,4 @@
-"""ProbeStudio —— FISH 探针设计 GUI（Streamlit 单页应用）。
+"""MycoPrimerV2 —— 分枝杆菌 FISH 探针设计 GUI（Streamlit 单页应用）。
 
 页面结构：
     侧边栏  ① 靶序列（粘贴 FASTA 或选已注册索引）② 设计方案（四选一，
@@ -27,11 +27,11 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from probedesign import __version__
-from probedesign.alignment import AlignmentError, build_bowtie2_index
-from probedesign.models import DesignParams, DesignResult, Probe, ReferenceGenome
-from probedesign.pipeline import run_design
-from probedesign.report import probes_to_dataframe
+from mycoprimer import __version__
+from mycoprimer.alignment import AlignmentError, build_bowtie2_index
+from mycoprimer.models import DesignParams, DesignResult, Probe, ReferenceGenome
+from mycoprimer.pipeline import run_design
+from mycoprimer.report import probes_to_dataframe
 
 # 数据目录：默认取当前工作目录（launch.command 会 cd 到项目目录）；
 # 也可用环境变量 PROBESTUDIO_HOME 指定其他位置。
@@ -100,7 +100,7 @@ APP_CSS = """
 
 
 st.set_page_config(
-    page_title="ProbeStudio · FISH 探针设计",
+    page_title="MycoPrimerV2 · 分枝杆菌 FISH 探针设计",
     page_icon="🔬",
     layout="wide",
     initial_sidebar_state="auto",
@@ -608,14 +608,14 @@ def render_results(result: DesignResult) -> None:
         st.download_button(
             "下载全部候选（CSV）",
             dataframe.to_csv(index=False).encode("utf-8-sig"),
-            file_name=f"probedesign_{scheme}_all.csv",
+            file_name=f"mycoprimer_{scheme}_all.csv",
             mime="text/csv",
         )
         passed_df = dataframe[dataframe["passed"]]
         st.download_button(
             "下载最终集合（CSV）",
             passed_df.to_csv(index=False).encode("utf-8-sig"),
-            file_name=f"probedesign_{scheme}_passed.csv",
+            file_name=f"mycoprimer_{scheme}_passed.csv",
             mime="text/csv",
         )
         order_col = "full_sequence" if "full_sequence" in passed_df.columns else "sequence"
@@ -633,7 +633,7 @@ def render_results(result: DesignResult) -> None:
         st.download_button(
             "下载订购表（名称 + 序列，兼容 IDT Bulk Input）",
             order_df.to_csv(index=False).encode("utf-8-sig"),
-            file_name=f"probedesign_{scheme}_order.csv",
+            file_name=f"mycoprimer_{scheme}_order.csv",
             mime="text/csv",
         )
         summary = {
@@ -647,7 +647,7 @@ def render_results(result: DesignResult) -> None:
         st.download_button(
             "下载参数与汇总（JSON）",
             json.dumps(summary, ensure_ascii=False, indent=2).encode("utf-8"),
-            file_name=f"probedesign_{scheme}_summary.json",
+            file_name=f"mycoprimer_{scheme}_summary.json",
             mime="application/json",
         )
 
@@ -658,7 +658,7 @@ def render_results(result: DesignResult) -> None:
 
 ui_params: dict = {}
 with st.sidebar:
-    st.header("🔬 ProbeStudio")
+    st.header("🧪 MycoPrimerV2")
     st.caption(f"v{__version__} · 本地 FISH 探针设计，序列不出机。")
 
     st.markdown('<div class="pf-section-h">① 靶序列</div>', unsafe_allow_html=True)
@@ -708,16 +708,49 @@ with st.sidebar:
     elif scheme == "SNAIL-FISH":
         render_snail_params(ui_params)
 
+    # ---- 设计目标预设（V2 新增）：沉淀两轮批量测试的经验配置 ----
+    # 低丰度检测：目标探针数 48（信号 ∝ 单转录本探针堆叠数）、min_gap 2、
+    #             不开跨物种背景（单菌液培无跨种背景，开了会误杀探针）；
+    # 物种区分：目标 20、跨物种背景过滤开启（保守基因会被正确淘汰，
+    #             MTB/BCG 区分需改用 RD 区基因——见第一轮测试报告）。
+    preset = st.radio(
+        "设计目标预设",
+        ("低丰度转录本检测（液培）", "物种区分探针", "自定义"),
+        help=(
+            "预设会自动填充下方参数，仍可手动修改。"
+            "低丰度检测：48 条/基因堆叠 + 无跨种过滤；"
+            "物种区分：20 条/基因 + 勾选背景基因组。"
+        ),
+    )
+    if preset != st.session_state.get("pf_preset_last"):
+        st.session_state["pf_preset_last"] = preset
+        st.session_state["pf_desired"] = 0 if preset == "自定义" else (
+            48 if preset.startswith("低丰度") else 20
+        )
+        st.session_state["pf_gap"] = 2 if preset.startswith("低丰度") else 0
+
     params_min_gap = st.number_input(
-        "最小间隔 (nt)", 0, 200, 0,
+        "最小间隔 (nt)", 0, 200, key="pf_gap",
         help="相邻探针结合区之间的最小间隔；SNAIL 方案会自动加上双臂跨度。",
     )
     ui_params["min_gap"] = params_min_gap
     desired = st.number_input(
-        "目标探针数（0 = 不限制）", 0, 500, 0,
-        help="候选过多时按均匀分布降采样到该数量。",
+        "目标探针数（0 = 不限制）", 0, 500, key="pf_desired",
+        help="候选过多时按均匀分布降采样到该数量；低丰度检测建议 40–48。",
     )
     ui_params["desired_probe_count"] = desired
+    if preset.startswith("低丰度"):
+        st.markdown(
+            '<div class="pf-caption">💡 低丰度预设已生效：探针数 48、间隔 2 nt、'
+            "建议不勾选任何背景基因组。</div>",
+            unsafe_allow_html=True,
+        )
+    elif preset == "物种区分探针":
+        st.markdown(
+            '<div class="pf-caption">💡 物种区分预设已生效：探针数 20、'
+            "请在 ④ 中勾选背景基因组（MTB 与 BCG 区分请改用 RD 区基因）。</div>",
+            unsafe_allow_html=True,
+        )
 
     with st.expander("特异性过滤"):
         spec_params = DesignParams()
@@ -751,11 +784,11 @@ with st.sidebar:
 # Genome management page area
 # ---------------------------------------------------------------------------
 
-st.markdown('<div class="pf-kicker">Local FISH probe design</div>', unsafe_allow_html=True)
-st.title("ProbeStudio")
+st.markdown('<div class="pf-kicker">MycoPrimerV2 · Local FISH probe design</div>', unsafe_allow_html=True)
+st.title("MycoPrimerV2")
 st.markdown(
-    '<p class="pf-hero-sub">smFISH / smiFISH / HCR 3.0 / SNAIL 探针设计 · '
-    "宿主基因组过滤 · 全程本地运行</p>",
+    '<p class="pf-hero-sub">分枝杆菌 smFISH / smiFISH / HCR 3.0 / SNAIL 探针设计 · '
+    "四种方案独立模块 · 全程本地运行</p>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -853,16 +886,16 @@ if run_clicked:
         progress = st.progress(0.0, text="正在枚举候选并计算热力学参数…")
         result = run_design_job(fasta_path, prefix, hosts, params)
         progress.progress(1.0, text="设计完成")
-        st.session_state["probedesign_result"] = result
-        st.session_state["probedesign_hosts"] = [h.id for h in hosts]
+        st.session_state["mycoprimer_result"] = result
+        st.session_state["mycoprimer_hosts"] = [h.id for h in hosts]
     except AlignmentError as exc:
         st.error(f"比对失败：{exc}")
     except ValueError as exc:
         st.error(f"参数或输入错误：{exc}")
 
-result = st.session_state.get("probedesign_result")
+result = st.session_state.get("mycoprimer_result")
 if isinstance(result, DesignResult):
-    hosts_used = st.session_state.get("probedesign_hosts", [])
+    hosts_used = st.session_state.get("mycoprimer_hosts", [])
     if hosts_used:
         st.caption(f"已对比宿主/背景基因组：{'、'.join(hosts_used)}")
     render_results(result)

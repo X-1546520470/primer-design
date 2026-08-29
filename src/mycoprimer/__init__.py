@@ -18,8 +18,8 @@
     pipeline.py  run_design()：按 params.design_scheme 分发到对应方案
 
 典型用法：
-    from probedesign.models import DesignParams, ReferenceGenome
-    from probedesign.pipeline import run_design
+    from mycoprimer.models import DesignParams, ReferenceGenome
+    from mycoprimer.pipeline import run_design
 
     params = DesignParams(design_scheme="smFISH")
     result = run_design("target.fa", "target_idx", [背景基因组...], params)

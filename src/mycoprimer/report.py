@@ -20,7 +20,7 @@ from typing import Dict, List
 
 import pandas as pd
 
-from probedesign.models import DesignResult, Probe
+from mycoprimer.models import DesignResult, Probe
 
 
 def probes_to_dataframe(result: DesignResult) -> pd.DataFrame:

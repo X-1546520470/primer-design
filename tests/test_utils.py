@@ -1,6 +1,6 @@
 import math
 
-from probedesign.utils import gc_content, has_homopolymer, reverse_complement, calc_tm
+from mycoprimer.utils import gc_content, has_homopolymer, reverse_complement, calc_tm
 
 
 def test_reverse_complement():

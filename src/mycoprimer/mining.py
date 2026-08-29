@@ -15,8 +15,8 @@ from typing import List
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-from probedesign.models import DesignParams, Probe
-from probedesign.utils import reverse_complement
+from mycoprimer.models import DesignParams, Probe
+from mycoprimer.utils import reverse_complement
 
 
 def load_fasta(path: str) -> List[SeqRecord]:

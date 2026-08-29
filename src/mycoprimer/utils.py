@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 
-from probedesign.config import (
+from mycoprimer.config import (
     DEFAULT_DNTP,
     DEFAULT_FORMAMIDE_FACTOR,
     DEFAULT_FORMAMIDE_PCT,

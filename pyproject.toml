@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "probedesign"
+name = "mycoprimer"
 version = "2.0.0"
 description = "FISH probe design studio: smFISH / smiFISH / HCR 3.0 / SNAIL with host-genome filtering"
 readme = "README.md"
@@ -23,8 +23,11 @@ dependencies = [
 dev = ["pytest>=8"]
 
 [project.scripts]
-probestudio = "probedesign.__main__:main"
+probestudio = "mycoprimer.__main__:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["probedesign", "probedesign.schemes"]
+packages = ["mycoprimer", "mycoprimer.schemes"]
+
+[tool.setuptools.package-data]
+mycoprimer = ["config_default.toml"]

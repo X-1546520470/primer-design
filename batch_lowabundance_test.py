@@ -53,8 +53,8 @@ from batch_smfish_test import (  # noqa: E402  复用第一轮的解析与统计
     parse_attributes,
     write_fasta,
 )
-from probedesign.models import DesignParams, DesignResult, ReferenceGenome  # noqa: E402
-from probedesign.pipeline import run_design  # noqa: E402
+from mycoprimer.models import DesignParams, DesignResult, ReferenceGenome  # noqa: E402
+from mycoprimer.pipeline import run_design  # noqa: E402
 
 OUT_DIR = PROJECT / "test_data" / "lowabundance_results"
 GENE_FASTA_DIR = OUT_DIR / "gene_fastas"

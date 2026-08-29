@@ -18,13 +18,13 @@ from typing import List
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from probedesign.alignment import align_probes_to_index
-from probedesign.filters import apply_thermo_filters
-from probedesign.mining import load_fasta, mine_candidates
-from probedesign.models import DesignParams, DesignResult, Probe, ReferenceGenome
-from probedesign.scoring import apply_specificity_filters, score_probes
-from probedesign.schemes.common import maybe_reverse_complement_target
-from probedesign.selection import select_non_overlapping
+from mycoprimer.alignment import align_probes_to_index
+from mycoprimer.filters import apply_thermo_filters
+from mycoprimer.mining import load_fasta, mine_candidates
+from mycoprimer.models import DesignParams, DesignResult, Probe, ReferenceGenome
+from mycoprimer.scoring import apply_specificity_filters, score_probes
+from mycoprimer.schemes.common import maybe_reverse_complement_target
+from mycoprimer.selection import select_non_overlapping
 
 
 def design_smfish(

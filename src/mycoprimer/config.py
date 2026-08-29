@@ -14,7 +14,7 @@ Tm 计算采用 SantaLucia 1998 统一最近邻模型（unified NN），即探�
 
 from __future__ import annotations
 
-from probedesign.models import DesignParams
+from mycoprimer.models import DesignParams
 
 DEFAULT_PARAMS = DesignParams()
 

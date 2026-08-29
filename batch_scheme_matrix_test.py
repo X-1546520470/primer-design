@@ -36,9 +36,9 @@ sys.path.insert(0, str(PROJECT / "src"))
 
 from batch_lowabundance_test import ORGANISMS  # noqa: E402
 from batch_smfish_test import failure_category  # noqa: E402
-from probedesign.models import DesignParams, DesignResult  # noqa: E402
-from probedesign.pipeline import run_design  # noqa: E402
-from probedesign.schemes.initiators import HCR_INITIATORS  # noqa: E402
+from mycoprimer.models import DesignParams, DesignResult  # noqa: E402
+from mycoprimer.pipeline import run_design  # noqa: E402
+from mycoprimer.schemes.initiators import HCR_INITIATORS  # noqa: E402
 
 GENE_CSV = PROJECT / "test_data" / "lowabundance_results" / "batch_summary.csv"
 OUT_DIR = PROJECT / "test_data" / "scheme_matrix_results"

@@ -1,5 +1,5 @@
-from probedesign.filters import apply_thermo_filters
-from probedesign.models import DesignParams, Probe
+from mycoprimer.filters import apply_thermo_filters
+from mycoprimer.models import DesignParams, Probe
 
 
 def make_probe(seq: str) -> Probe:

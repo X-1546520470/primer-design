@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import List
 
-from probedesign.models import DesignParams, DesignResult, ReferenceGenome
-from probedesign.schemes.smfish import design_smfish
+from mycoprimer.models import DesignParams, DesignResult, ReferenceGenome
+from mycoprimer.schemes.smfish import design_smfish
 
 
 def design_smifish(
@@ -31,6 +31,16 @@ def design_smifish(
     readout = (params.smi_readout_sequence or "").upper()
     linker = params.smi_linker.upper()
     position = params.smi_readout_position
+
+    # V2 新增：readout/linker 只允许 ACGT，避免把简并码或错误序列拼进
+    # 订购 oligo（readout 决定二级探针结合，拼错整批探针报废）。
+    for label, seq in (("readout", readout), ("linker", linker)):
+        invalid = set(seq) - set("ACGT")
+        if invalid:
+            raise ValueError(
+                f"smiFISH {label} 序列含非法碱基 {''.join(sorted(invalid))}，"
+                "仅接受 A/C/G/T。"
+            )
 
     for probe in result.probes:
         full_seq = probe.sequence

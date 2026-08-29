@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import List
 
-from probedesign.models import DesignParams, DesignResult, ReferenceGenome
-from probedesign.schemes import design_for_scheme
-from probedesign.schemes.smfish import design_smfish
+from mycoprimer.models import DesignParams, DesignResult, ReferenceGenome
+from mycoprimer.schemes import design_for_scheme
+from mycoprimer.schemes.smfish import design_smfish
 
 
 def run_design(

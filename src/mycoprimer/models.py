@@ -77,13 +77,17 @@ class DesignParams:
     smi_linker: str = "TTT"                     # 探针与延伸段之间的间隔
 
     # ---- HCR 3.0 专属 ----
+    # V2 变更：默认窗口按分枝杆菌（GC 65–67%）基因组的敏感性测试调整。
+    # 官方协议窗口（GC 45–55、Gibbs −70~−50）面向中低 GC 生物，在分枝杆菌
+    # 上 48 基因测试仅 1.4 对/基因、20/48 基因零产出；放宽后 3.9 对/基因、
+    # 零产出降至 6/48（数据见 三方案可行性对比测试报告.md §3.2）。
     hcr_tile_size: int = 52      # tile 长度；标准协议 52 nt（两条 25-mer + 中间 2 nt）
     hcr_channel: str = "B1"      # 分裂 initiator 通道（B1–B5），多色实验按靶标区分
-    hcr_min_gibbs: float = -70.0  # RNA/DNA 杂交体 Gibbs 自由能窗口下限（kcal/mol）
-    hcr_max_gibbs: float = -50.0  # Gibbs 窗口上限
-    hcr_dtm_max: Optional[float] = 5.0  # 两条半探针 Tm 差的最大允许值
-    hcr_min_gc: float = 45.0     # tile GC 下限（%）
-    hcr_max_gc: float = 55.0     # tile GC 上限（%）
+    hcr_min_gibbs: float = -75.0  # RNA/DNA 杂交体 Gibbs 自由能窗口下限（kcal/mol）
+    hcr_max_gibbs: float = -45.0  # Gibbs 窗口上限
+    hcr_dtm_max: Optional[float] = 8.0  # 两条半探针 Tm 差的最大允许值
+    hcr_min_gc: float = 40.0     # tile GC 下限（%）
+    hcr_max_gc: float = 65.0     # tile GC 上限（%）
     hcr_min_tm: Optional[float] = None  # tile 整体 Tm 窗口下限（默认关闭）
     hcr_max_tm: Optional[float] = None  # tile Tm 上限（52-mer 必然远超 smFISH 窗口）
 

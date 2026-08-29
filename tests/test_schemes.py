@@ -5,13 +5,13 @@ import tempfile
 
 import pytest
 
-from probedesign.alignment import build_bowtie2_index
-from probedesign.models import DesignParams, ReferenceGenome
-from probedesign.pipeline import run_design
-from probedesign.schemes.hcr3 import design_hcr3
-from probedesign.schemes.initiators import HCR_INITIATORS
-from probedesign.schemes.smifish import design_smifish
-from probedesign.schemes.snail import design_snail
+from mycoprimer.alignment import build_bowtie2_index
+from mycoprimer.models import DesignParams, ReferenceGenome
+from mycoprimer.pipeline import run_design
+from mycoprimer.schemes.hcr3 import design_hcr3
+from mycoprimer.schemes.initiators import HCR_INITIATORS
+from mycoprimer.schemes.smifish import design_smifish
+from mycoprimer.schemes.snail import design_snail
 
 
 def _random_seq(n: int, gc: float = 0.5, seed: int | None = None) -> str:

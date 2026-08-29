@@ -15,11 +15,11 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from probedesign.models import DesignParams, DesignResult, ReferenceGenome
-from probedesign.schemes.hcr3 import design_hcr3
-from probedesign.schemes.smfish import design_smfish
-from probedesign.schemes.smifish import design_smifish
-from probedesign.schemes.snail import design_snail
+from mycoprimer.models import DesignParams, DesignResult, ReferenceGenome
+from mycoprimer.schemes.hcr3 import design_hcr3
+from mycoprimer.schemes.smfish import design_smfish
+from mycoprimer.schemes.smifish import design_smifish
+from mycoprimer.schemes.snail import design_snail
 
 # 方案名 -> 设计函数。GUI 侧栏的方案下拉框与这里的键保持一致。
 _DESIGN_FUNCS: Dict[str, callable] = {

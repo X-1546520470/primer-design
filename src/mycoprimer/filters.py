@@ -16,8 +16,8 @@ from typing import List
 
 from primer3 import calc_hairpin
 
-from probedesign.models import DesignParams, Probe
-from probedesign.utils import calc_tm, gc_content, has_homopolymer
+from mycoprimer.models import DesignParams, Probe
+from mycoprimer.utils import calc_tm, gc_content, has_homopolymer
 
 
 def apply_thermo_filters(probes: List[Probe], params: DesignParams) -> List[Probe]:

@@ -44,9 +44,9 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT / "src"))
 
-from probedesign.models import DesignParams, DesignResult, ReferenceGenome  # noqa: E402
-from probedesign.pipeline import run_design  # noqa: E402
-from probedesign.utils import reverse_complement  # noqa: E402
+from mycoprimer.models import DesignParams, DesignResult, ReferenceGenome  # noqa: E402
+from mycoprimer.pipeline import run_design  # noqa: E402
+from mycoprimer.utils import reverse_complement  # noqa: E402
 
 ANNOT_DIR = PROJECT / "test_data" / "annotations"
 GENOME_DIR = PROJECT / "genomes"

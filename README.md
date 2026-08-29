@@ -1,16 +1,23 @@
-# ProbeStudio · FISH 探针设计本地 GUI
+# MycoPrimerV2 · 分枝杆菌 FISH 探针设计 GUI
 
-ProbeStudio 是一个完全在本机运行的 FISH 探针设计与过滤平台，基于 J 的
-探针设计引擎（原 FastAPI/React 方案的核心算法层）完全重构而来：
+MycoPrimerV2（原 ProbeStudio / primer-design v1）是一个完全在本机运行的
+分枝杆菌 FISH 探针设计与过滤平台，V2 按三轮批量测试的结论对四种 FISH
+方案的脚本做了独立优化，并整合进同一个 GUI：
 
-- **四种方案 · 独立模块**：smFISH、smiFISH、HCR 3.0、SNAIL FISH，各自是
-  `probedesign/schemes/` 下的独立设计模块，可扩展新方案。
-- **宿主基因组过滤**：候选探针比对到注册的宿主/背景基因组（bowtie2），
-  超阈值即淘汰——降低感染/定植模型中的背景信号。
-- **物理模型**：SantaLucia 1998 最近邻 Tm（单价盐 + Mg²⁺/dNTP + 甲酰胺
-  校正）、primer3 发卡、Sugimoto 1995 RNA/DNA Gibbs 自由能（HCR）。
-- **界面**：侧边栏参数全部带解释；结果含指标卡、漏斗图、覆盖图、分布图、
-  单条详情与订购表导出；不做"合格/不合格"自动判定。
+- **四种方案 · 独立模块**：smFISH、smiFISH、HCR 3.0、SNAIL FISH，各自的
+  设计脚本独立实现（`src/mycoprimer/schemes/`），注册表分发、可扩展。
+- **设计目标预设**（V2 新增）：低丰度转录本检测（液培）与物种区分探针
+  两套经验配置一键套用——来源见仓库内三份批量测试报告。
+- **分枝杆菌调优的 HCR 窗口**（V2 新增）：针对 65–67% GC 基因组将默认
+  窗口调整为 GC 40–65、dTm≤8、Gibbs −75~−45（官方中低 GC 窗口在
+  分枝杆菌上 48 基因测试仅 1.4 对/基因，调参后 3.9 对/基因）。
+- **SNAIL 订购便捷**（V2 新增）：padlock 自动生成带 /5Phos/ 的订购变体。
+- **smiFISH 校验**（V2 新增）：readout/linker 含非 ACGT 字符直接报错。
+- **宿主基因组过滤**：候选探针比对到注册的背景基因组（bowtie2），按需开关。
+- **本地运行**：仅监听 127.0.0.1，序列不出机；所有指标为描述性参考，
+  不做"合格/不合格"自动判定。
+
+V1 → V2 的引擎修正（含 5 个批量测试发现的 bug）见下文"引擎修正"。
 
 ## 环境
 
@@ -56,7 +63,7 @@ conda install -n Probe -c bioconda -c conda-forge bowtie2
 ## 代码结构
 
 ```
-src/probedesign/
+src/mycoprimer/
 ├── models.py      # 数据模型（参数/探针/结果）
 ├── config.py      # SantaLucia NN 表与默认条件
 ├── utils.py       # Tm、GC、反向互补等序列工具

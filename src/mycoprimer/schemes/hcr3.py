@@ -26,9 +26,9 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from primer3 import calc_hairpin, calc_tm
 
-from probedesign.mining import mine_candidates
-from probedesign.models import DesignParams, DesignResult, Probe, ReferenceGenome
-from probedesign.schemes.common import (
+from mycoprimer.mining import mine_candidates
+from mycoprimer.models import DesignParams, DesignResult, Probe, ReferenceGenome
+from mycoprimer.schemes.common import (
     apply_host_alignment,
     apply_target_alignment,
     calc_gibbs_rna_dna,
@@ -36,10 +36,10 @@ from probedesign.schemes.common import (
     load_first_target,
     maybe_reverse_complement_target,
 )
-from probedesign.schemes.initiators import HCR_INITIATORS
-from probedesign.scoring import score_probes
-from probedesign.selection import select_non_overlapping
-from probedesign.utils import calc_tm as probe_calc_tm, has_homopolymer
+from mycoprimer.schemes.initiators import HCR_INITIATORS
+from mycoprimer.scoring import score_probes
+from mycoprimer.selection import select_non_overlapping
+from mycoprimer.utils import calc_tm as probe_calc_tm, has_homopolymer
 
 
 def _filter_tiles(probes: List[Probe], params: DesignParams) -> None:

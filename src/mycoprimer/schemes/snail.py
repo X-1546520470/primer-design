@@ -27,8 +27,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from primer3 import calc_hairpin
 
-from probedesign.models import DesignParams, DesignResult, Probe, ReferenceGenome
-from probedesign.schemes.common import (
+from mycoprimer.models import DesignParams, DesignResult, Probe, ReferenceGenome
+from mycoprimer.schemes.common import (
     apply_host_alignment,
     apply_target_alignment,
     calc_hairpin_dg,
@@ -38,9 +38,9 @@ from probedesign.schemes.common import (
     maybe_reverse_complement_target,
     reverse_complement,
 )
-from probedesign.utils import calc_tm
-from probedesign.scoring import score_probes
-from probedesign.selection import select_non_overlapping
+from mycoprimer.utils import calc_tm
+from mycoprimer.scoring import score_probes
+from mycoprimer.selection import select_non_overlapping
 
 
 def _build_snail_probe(target_seq: str, start: int, params: DesignParams) -> Probe | None:
@@ -144,6 +144,9 @@ def _assemble_oligos(probe: Probe, params: DesignParams) -> None:
     )
     probe.metadata["primer_sequence"] = primer
     probe.metadata["padlock_sequence"] = padlock
+    # 订购便捷：padlock 必须 5′ 磷酸化才能被连接酶环化，直接给出带修饰
+    # 标记的变体（IDT 等合成商接受 /5Phos/ 前缀语法）。
+    probe.metadata["padlock_sequence_5phos"] = "/5Phos/" + padlock
     probe.metadata["ugi_barcode"] = ugi
 
 
@@ -162,7 +165,7 @@ def _check_component_specificity(
     也可能带来交叉反应。任一组件在背景基因组上超标即淘汰整条候选，
     失败原因记为 "{label}_host_hits[...]" 便于界面区分。
     """
-    from probedesign.alignment import align_probes_to_index
+    from mycoprimer.alignment import align_probes_to_index
 
     seq_records = [
         SeqRecord(Seq(seq), id=probe.probe_id, description="")

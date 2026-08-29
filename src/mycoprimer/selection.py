@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from probedesign.models import Probe
+from mycoprimer.models import Probe
 
 
 def _intervals_too_close(a: Probe, b: Probe, min_gap: int) -> bool:

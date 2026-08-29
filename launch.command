@@ -16,4 +16,4 @@ fi
 export PYTHONNOUSERSITE=1
 export PATH="/opt/anaconda3/envs/Probe/bin:$PATH"
 cd "$APP_DIR"
-exec "$APP_PYTHON" -m probedesign
+exec "$APP_PYTHON" -m mycoprimer

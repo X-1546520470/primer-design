@@ -5,10 +5,10 @@ from __future__ import annotations
 import math
 import unittest
 
-from probedesign.alignment import parse_sam_hit_counts
-from probedesign.models import DesignParams, Probe
-from probedesign.selection import select_non_overlapping
-from probedesign.utils import calc_tm
+from mycoprimer.alignment import parse_sam_hit_counts
+from mycoprimer.models import DesignParams, Probe
+from mycoprimer.selection import select_non_overlapping
+from mycoprimer.utils import calc_tm
 
 
 class TmRegressionTests(unittest.TestCase):
@@ -108,12 +108,12 @@ class SnailArmStrandTests(unittest.TestCase):
     """Primer/padlock arms must be antisense to bind the target RNA."""
 
     def test_assembled_oligos_hybridize_to_target(self) -> None:
-        from probedesign.schemes.snail import (
+        from mycoprimer.schemes.snail import (
             _assemble_oligos,
             _filter_arms,
             _mine_snail_candidates,
         )
-        from probedesign.utils import reverse_complement
+        from mycoprimer.utils import reverse_complement
 
         # Target region chosen so both arms pass the SNAIL filters
         # (55% GC, no repeat motifs, no stable hairpins).
@@ -161,8 +161,8 @@ class ScoreMinRegressionTests(unittest.TestCase):
         if not genome_path.is_file() or not index_path.with_suffix(".1.bt2").exists() \
                 and not (project / "indices" / "bcg_pasteur.1.bt2").exists():
             self.skipTest("本机基因组/索引数据不存在")
-        from probedesign.alignment import align_probes_to_index
-        from probedesign.utils import reverse_complement
+        from mycoprimer.alignment import align_probes_to_index
+        from mycoprimer.utils import reverse_complement
         from Bio.Seq import Seq
         from Bio.SeqRecord import SeqRecord
 

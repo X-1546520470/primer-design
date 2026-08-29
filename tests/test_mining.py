@@ -1,9 +1,9 @@
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from probedesign.mining import mine_candidates
-from probedesign.models import DesignParams
-from probedesign.utils import reverse_complement
+from mycoprimer.mining import mine_candidates
+from mycoprimer.models import DesignParams
+from mycoprimer.utils import reverse_complement
 
 
 def test_mine_candidates_count():

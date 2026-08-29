@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from probedesign.models import DesignParams, Probe
+from mycoprimer.models import DesignParams, Probe
 
 
 def apply_specificity_filters(
