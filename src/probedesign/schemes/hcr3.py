@@ -68,10 +68,9 @@ def _filter_tiles(probes: List[Probe], params: DesignParams) -> None:
         if has_homopolymer(probe.sequence, params.max_homopolymer):
             reasons.append(f"homopolymer>{params.max_homopolymer}")
 
-        hairpin = calc_hairpin(probe.sequence)
-        probe.hairpin_tm = hairpin.tm
-        if hairpin.tm > params.max_hairpin_tm:
-            reasons.append(f"hairpinTm={hairpin.tm:.1f}C > {params.max_hairpin_tm}")
+        # 注意：发卡检查不在 tile 整体上做——45 °C 阈值是为 18–24-mer 设定的，
+        # 52-mer 的发卡 Tm 天然更高（v2 实测会淘汰 ~99% 候选）。半探针层面的
+        # 发卡检查移到 _split_and_assemble，针对真正合成的 25-mer 序列。
 
         gibbs = calc_gibbs_rna_dna(probe.sequence)
         probe.metadata["gibbs_fe"] = gibbs
@@ -101,6 +100,16 @@ def _split_and_assemble(probe: Probe, params: DesignParams) -> None:
 
     probe.metadata["five_prime_half"] = five_prime
     probe.metadata["three_prime_half"] = three_prime
+
+    # 发卡检查针对真正合成的 25-mer 半探针（45 °C 阈值在此尺度上才有意义）。
+    for label, half in (("5p", five_prime), ("3p", three_prime)):
+        hairpin = calc_hairpin(half)
+        if hairpin.tm > params.max_hairpin_tm:
+            probe.passed = False
+            probe.failure_reasons.append(
+                f"hairpinTm[{label}]={hairpin.tm:.1f}C > {params.max_hairpin_tm}"
+            )
+            return
 
     dtm = abs(calc_tm(five_prime) - calc_tm(three_prime))
     probe.metadata["dTm"] = dtm
