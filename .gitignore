@@ -9,3 +9,4 @@ indices/
 genomes/
 genome_registry.json
 data/smoke/results/
+batch_cache/
