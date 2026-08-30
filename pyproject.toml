@@ -23,7 +23,8 @@ dependencies = [
 dev = ["pytest>=8"]
 
 [project.scripts]
-probestudio = "mycoprimer.__main__:main"
+mycoprimer = "mycoprimer.__main__:main"
+mycoprimer-batch = "mycoprimer.batch:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

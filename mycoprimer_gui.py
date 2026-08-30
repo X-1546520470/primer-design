@@ -36,8 +36,8 @@ sys.path.insert(0, str(PROJECT / "src"))
 
 from mycoprimer import __version__  # noqa: E402
 from mycoprimer.alignment import AlignmentError, build_bowtie2_index  # noqa: E402
-from mycoprimer.models import DesignParams, DesignResult, ReferenceGenome  # noqa: E402
-from mycoprimer.pipeline import run_design  # noqa: E402
+from mycoprimer.batch import BatchReport, batch_probe_rows, parse_multi_fasta, run_batch  # noqa: E402
+from mycoprimer.models import DesignParams, ReferenceGenome  # noqa: E402
 
 APP_TITLE = f"MycoPrimerV2 分枝杆菌 FISH 探针设计工具 v{__version__}"
 
@@ -124,7 +124,8 @@ class ProbeGUI:
 
         self.scheme_vars: dict[str, tk.Variable] = {}
         self.bg_vars: dict[str, tk.BooleanVar] = {}
-        self.result: DesignResult | None = None
+        self.batch: BatchReport | None = None
+        self._probe_index: dict[str, tuple[object, object]] = {}
         self.ui_queue: queue.Queue = queue.Queue()
         self._target_fasta_hash: str | None = None
 
@@ -371,19 +372,19 @@ class ProbeGUI:
         b1 = ttk.Frame(f1)
         b1.pack(fill="x")
         ttk.Button(b1, text="复制选中探针序列", command=self.copy_selected).pack(side="left")
-        ttk.Label(b1, text="点击行查看单条详情（含方案专属寡核苷酸）",
+        ttk.Label(b1, text="多记录 FASTA 自动批量设计；点击行查看单条详情",
                   foreground="#555").pack(side="left", padx=8)
         self.count_var = tk.StringVar(value="(尚未运行)")
         ttk.Label(b1, textvariable=self.count_var, foreground="#555").pack(side="right")
         wrap = ttk.Frame(f1)
         wrap.pack(fill="both", expand=True)
-        cols = ("start", "stop", "length", "sequence", "tm", "gc", "hits", "reason")
+        cols = ("target", "start", "stop", "length", "sequence", "tm", "gc", "hits")
         self.tree = ttk.Treeview(wrap, columns=cols, show="headings", selectmode="browse")
-        headers = {"start": "起点", "stop": "终点", "length": "长度",
+        headers = {"target": "靶基因", "start": "起点", "stop": "终点", "length": "长度",
                    "sequence": "序列 (5'→3')", "tm": "Tm", "gc": "GC",
-                   "hits": "靶标比对", "reason": "状态"}
-        widths = {"start": 70, "stop": 70, "length": 50, "sequence": 260,
-                  "tm": 60, "gc": 55, "hits": 70, "reason": 260}
+                   "hits": "靶标比对"}
+        widths = {"target": 150, "start": 65, "stop": 65, "length": 45,
+                  "sequence": 250, "tm": 55, "gc": 50, "hits": 65}
         for c in cols:
             self.tree.heading(c, text=headers[c])
             self.tree.column(c, width=widths[c], anchor="w")
@@ -420,12 +421,12 @@ class ProbeGUI:
         ttk.Label(f4, text="设计完成后可导出：", padding=6).pack(anchor="w")
         grid = ttk.Frame(f4, padding=8)
         grid.pack(fill="both")
-        ttk.Button(grid, text="最终探针 CSV", command=lambda: self.save_csv(True),
-                   width=28).grid(row=0, column=0, sticky="we", pady=4)
-        ttk.Button(grid, text="全部候选 CSV", command=lambda: self.save_csv(False),
-                   width=28).grid(row=1, column=0, sticky="we", pady=4)
+        ttk.Button(grid, text="最终探针 CSV（全部基因）", command=self.save_csv,
+                   width=30).grid(row=0, column=0, sticky="we", pady=4)
+        ttk.Button(grid, text="逐基因汇总 CSV", command=self.save_summary,
+                   width=30).grid(row=1, column=0, sticky="we", pady=4)
         ttk.Button(grid, text="订购表 (IDT 兼容)", command=self.save_order,
-                   width=28).grid(row=2, column=0, sticky="we", pady=4)
+                   width=30).grid(row=2, column=0, sticky="we", pady=4)
         ttk.Label(f4, text="SNAIL 订购表自动包含 /5Phos/ 变体；smiFISH 使用完整序列\n"
                            "(探针 + linker + readout)；HCR 3.0 每对拆为 P1/P2 两行。",
                   foreground="#555", padding=6).pack(anchor="w")
@@ -571,10 +572,17 @@ class ProbeGUI:
             messagebox.showwarning("提示", "请先在 ① 输入靶序列 FASTA。")
             return
         try:
+            records = parse_multi_fasta(text)
+        except ValueError as exc:
+            messagebox.showerror("FASTA 解析失败", str(exc))
+            return
+        try:
             params = self._collect_params()
         except (TypeError, ValueError) as exc:
             messagebox.showerror("参数错误", f"参数填写有误：{exc}")
             return
+        n_records = len(records)
+        gene_word = "基因" if n_records > 1 else "序列"
 
         # 背景基因组
         registry = load_registry()
@@ -590,8 +598,10 @@ class ProbeGUI:
         ]
 
         self.run_btn.configure(state="disabled")
-        self.status_var.set("正在准备…")
-        self.ui_queue.put(("status", "正在写入靶序列并构建索引…"))
+        self.status_var.set(f"正在准备（{n_records} 条{gene_word}）…")
+        self.ui_queue.put(
+            ("status", f"正在写入 {n_records} 条{gene_word}并构建索引…")
+        )
         threading.Thread(target=self._design_worker, args=(text, params, hosts),
                          daemon=True).start()
 
@@ -612,9 +622,18 @@ class ProbeGUI:
                 self._target_fasta_hash = digest
 
             q.put(("status", f"正在设计（{params.design_scheme}，"
-                             f"{len(hosts)} 个背景基因组）…"))
-            result = run_design(str(fasta_path), prefix, hosts, params, threads=2)
-            q.put(("done", result))
+                             f"{len(hosts)} 个背景基因组，"
+                             f"{len(parse_multi_fasta(fasta_text))} 条记录）…"))
+
+            def progress(i: int, n: int, record_id: str):
+                q.put(("status", f"正在设计 {i}/{n}：{record_id}"))
+
+            report = run_batch(
+                fasta_text, prefix, hosts, params,
+                cache_dir=DATA_DIR / "batch_cache",
+                threads=2, progress=progress,
+            )
+            q.put(("done_batch", report))
         except AlignmentError as exc:
             q.put(("error", f"比对失败：{exc}"))
         except ValueError as exc:
@@ -628,14 +647,15 @@ class ProbeGUI:
                 kind, payload = self.ui_queue.get_nowait()
                 if kind == "status":
                     self.status_var.set(payload)
-                elif kind == "done":
-                    self.result = payload
+                elif kind == "done_batch":
+                    self.batch = payload
                     self.run_btn.configure(state="normal")
+                    failed = len(payload.failed_genes)
                     self.status_var.set(
-                        f"设计完成：候选 {len(payload.probes)} 条，"
-                        f"最终 {len(payload.passed_probes)} 条。"
+                        f"批量设计完成：{payload.total_genes} 条"
+                        f"（失败 {failed}），最终探针 {payload.total_probes} 条。"
                     )
-                    self._show_result(payload)
+                    self._show_batch(payload)
                 elif kind == "genome_ok":
                     self.run_btn.configure(state="normal")
                     self.status_var.set(f"基因组 {payload} 注册成功。")
@@ -651,67 +671,70 @@ class ProbeGUI:
     # ------------------------------------------------------------------
     # 结果展示与导出
     # ------------------------------------------------------------------
-    def _show_result(self, result: DesignResult):
+    def _show_batch(self, report: BatchReport):
         self.tree.delete(*self.tree.get_children())
-        scheme = result.params.design_scheme
-        for p in result.passed_probes:
-            self.tree.insert("", "end", iid=p.probe_id, values=(
-                p.start + 1, p.stop, p.length, p.sequence,
-                f"{p.tm:.1f}", f"{p.gc_content:.2f}", p.target_hits, "✓ 最终"),
-                tags=("pass",))
-        for p in result.failed_probes:
-            self.tree.insert("", "end", iid=p.probe_id, values=(
-                p.start + 1, p.stop, p.length, p.sequence,
-                f"{p.tm:.1f}", f"{p.gc_content:.2f}", p.target_hits,
-                "; ".join(p.failure_reasons)[:80]), tags=("fail",))
+        self._probe_index.clear()
+        n_rows = 0
+        for gene in report.genes:
+            if not gene.ok or gene.result is None:
+                continue
+            for probe in gene.result.passed_probes:
+                self.tree.insert("", "end", iid=probe.probe_id, values=(
+                    gene.record_id, probe.start + 1, probe.stop, probe.length,
+                    probe.sequence, f"{probe.tm:.1f}", f"{probe.gc_content:.2f}",
+                    probe.target_hits, "✓ 最终"), tags=("pass",))
+                self._probe_index[probe.probe_id] = (gene, probe)
+                n_rows += 1
         self.tree.tag_configure("pass", foreground="#0a7d32")
-        self.tree.tag_configure("fail", foreground="#9aa")
 
-        covered = sum(p.stop - p.start for p in result.passed_probes)
-        cov = covered / result.target_length * 100 if result.target_length else 0
+        covered = 0
+        total_len = 0
+        tms = []
+        per_gene_lines = []
+        for gene in report.genes:
+            if not gene.ok or gene.result is None:
+                per_gene_lines.append(f"{gene.record_id}: 失败 — {gene.error}")
+                continue
+            result = gene.result
+            covered += sum(p.stop - p.start for p in result.passed_probes)
+            total_len += result.target_length
+            if result.passed_probes:
+                gene_tms = [p.tm for p in result.passed_probes]
+                tms.extend(gene_tms)
+                per_gene_lines.append(
+                    f"{gene.record_id}: {len(result.passed_probes)} 条探针 | "
+                    f"Tm {min(gene_tms):.1f}–{max(gene_tms):.1f} °C | "
+                    f"覆盖 {sum(p.stop - p.start for p in result.passed_probes) / result.target_length * 100:.0f}%"
+                )
+            else:
+                per_gene_lines.append(f"{gene.record_id}: 0 条探针")
+        cov = covered / total_len * 100 if total_len else 0
         self.count_var.set(
-            f"候选 {len(result.probes)} | 最终 {len(result.passed_probes)} | 覆盖 {cov:.0f}%"
+            f"基因 {report.total_genes} | 最终探针 {report.total_probes} "
+            f"| 总覆盖 {cov:.0f}%"
         )
 
-        # 设计报告页
         lines = [
-            f"设计方案: {scheme}",
-            f"靶标: {result.target_id} ({result.target_length} nt)",
-            f"背景基因组: {', '.join(result.host_genome_ids) or '无'}",
+            f"设计方案: {report.params.design_scheme} | 基因数: {report.total_genes}"
+            f" | 总耗时 {report.elapsed_s:.0f} s",
+            f"最终探针合计: {report.total_probes} (平均 {report.total_probes / report.total_genes:.1f} 条/基因)",
+            f"合并覆盖率: {cov:.1f}%",
             "",
-            f"候选总数: {len(result.probes)}",
-            f"最终探针: {len(result.passed_probes)}",
-            f"覆盖率: {cov:.1f}%",
+            "逐基因汇总:",
+            *("  " + line for line in per_gene_lines),
+            "",
+            "参数:",
+            *[f"  {key} = {value}" for key, value in sorted(vars(report.params).items())],
         ]
-        if result.passed_probes:
-            tms = [p.tm for p in result.passed_probes]
-            lines.append(f"Tm 均值±SD: {statistics_mean(tms):.1f} ± {statistics_sd(tms):.1f} °C")
-            lines.append(f"GC 均值: {statistics_mean([p.gc_content for p in result.passed_probes]) * 100:.0f}%")
-        lines.append("")
-        lines.append("参数:")
-        for key, value in sorted(vars(result.params).items()):
-            lines.append(f"  {key} = {value}")
-        lines.append("")
-        lines.append("淘汰原因统计:")
-        reasons: dict[str, int] = {}
-        for p in result.failed_probes:
-            for reason in p.failure_reasons:
-                key = reason.split("=")[0].split(" ")[0]
-                reasons[key] = reasons.get(key, 0) + 1
-        for key, count in sorted(reasons.items(), key=lambda kv: -kv[1]):
-            lines.append(f"  {key}: {count} 条候选")
         self._set_text(self.report_txt, "\n".join(lines))
 
     def _on_row_select(self, _event=None):
-        if self.result is None:
-            return
         selection = self.tree.selection()
-        if not selection:
+        if not selection or selection[0] not in self._probe_index:
             return
         probe_id = selection[0]
-        probe = next((p for p in self.result.probes if p.probe_id == probe_id), None)
-        if probe is None:
-            return
+        gene, probe = self._probe_index[probe_id]
+        _ = gene
         lines = [
             f"探针 ID: {probe.probe_id}",
             f"位置: {probe.start + 1}–{probe.stop} (1-based) | 长度 {probe.length} nt",
@@ -742,57 +765,58 @@ class ProbeGUI:
 
     def copy_selected(self):
         selection = self.tree.selection()
-        if not selection:
+        if not selection or selection[0] not in self._probe_index:
             messagebox.showinfo("提示", "请先在结果表中选中一条探针。")
             return
-        probe = next((p for p in self.result.probes if p.probe_id == selection[0]), None)
-        if probe:
-            self.root.clipboard_clear()
-            self.root.clipboard_append(probe.sequence)
-            self.status_var.set(f"已复制 {probe.probe_id} 的序列。")
+        _gene, probe = self._probe_index[selection[0]]
+        self.root.clipboard_clear()
+        self.root.clipboard_append(probe.sequence)
+        self.status_var.set(f"已复制 {probe.probe_id} 的序列。")
 
     # ---- 导出 ----
-    def _probe_rows(self, result: DesignResult, passed_only: bool):
-        scheme = result.params.design_scheme
-        rows = []
-        for p in result.probes:
-            if passed_only and not p.passed:
-                continue
-            row = {
-                "probe_id": p.probe_id, "start": p.start + 1, "stop": p.stop,
-                "length": p.length, "sequence": p.sequence,
-                "tm": round(p.tm, 2), "gc": round(p.gc_content, 3),
-                "target_hits": p.target_hits, "passed": p.passed,
-                "failure_reasons": "; ".join(p.failure_reasons),
-            }
-            for key in ("full_sequence", "P1_sequence", "P2_sequence",
-                        "primer_sequence", "padlock_sequence_5phos"):
-                if key in p.metadata:
-                    row[key] = p.metadata[key]
-            rows.append(row)
-        return rows
-
-    def save_csv(self, passed_only: bool):
-        if self.result is None:
+    def _require_batch(self) -> BatchReport | None:
+        if self.batch is None:
             messagebox.showinfo("提示", "请先运行一次设计。")
+            return None
+        return self.batch
+
+    def save_csv(self):
+        report = self._require_batch()
+        if report is None:
             return
         path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            initialfile=f"probes_{'passed' if passed_only else 'all'}.csv",
+            defaultextension=".csv", initialfile="batch_probes.csv",
             filetypes=(("CSV", "*.csv"),),
         )
         if not path:
             return
-        rows = self._probe_rows(self.result, passed_only)
+        rows = batch_probe_rows(report)
         with open(path, "w", newline="", encoding="utf-8-sig") as fh:
             writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
             writer.writeheader()
             writer.writerows(rows)
-        self.status_var.set(f"已导出 {len(rows)} 行 → {path}")
+        self.status_var.set(f"已导出 {len(rows)} 条探针 → {path}")
+
+    def save_summary(self):
+        report = self._require_batch()
+        if report is None:
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv", initialfile="batch_summary.csv",
+            filetypes=(("CSV", "*.csv"),),
+        )
+        if not path:
+            return
+        rows = report.per_gene_rows()
+        with open(path, "w", newline="", encoding="utf-8-sig") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+        self.status_var.set(f"逐基因汇总已导出 {len(rows)} 行 → {path}")
 
     def save_order(self):
-        if self.result is None:
-            messagebox.showinfo("提示", "请先运行一次设计。")
+        report = self._require_batch()
+        if report is None:
             return
         path = filedialog.asksaveasfilename(
             defaultextension=".csv", initialfile="order_sheet.csv",
@@ -800,25 +824,29 @@ class ProbeGUI:
         )
         if not path:
             return
-        scheme = self.result.params.design_scheme
+        scheme = report.params.design_scheme
         out = []
-        for p in self.result.passed_probes:
-            if scheme == "smiFISH" and p.metadata.get("full_sequence"):
-                out.append({"Name": p.probe_id, "Sequence": p.metadata["full_sequence"]})
+        for row in batch_probe_rows(report):
+            if scheme == "smiFISH" and row.get("full_sequence"):
+                out.append({"Name": f"{row['record_id']}_{row['probe_id']}",
+                            "Sequence": row["full_sequence"]})
             elif scheme == "HCR3":
-                if p.metadata.get("P1_sequence"):
-                    out.append({"Name": f"{p.probe_id}_P1", "Sequence": p.metadata["P1_sequence"]})
-                if p.metadata.get("P2_sequence"):
-                    out.append({"Name": f"{p.probe_id}_P2", "Sequence": p.metadata["P2_sequence"]})
+                if row.get("P1_sequence"):
+                    out.append({"Name": f"{row['record_id']}_{row['probe_id']}_P1",
+                                "Sequence": row["P1_sequence"]})
+                if row.get("P2_sequence"):
+                    out.append({"Name": f"{row['record_id']}_{row['probe_id']}_P2",
+                                "Sequence": row["P2_sequence"]})
             elif scheme == "SNAIL-FISH":
-                if p.metadata.get("primer_sequence"):
-                    out.append({"Name": f"{p.probe_id}_primer",
-                                "Sequence": p.metadata["primer_sequence"]})
-                if p.metadata.get("padlock_sequence_5phos"):
-                    out.append({"Name": f"{p.probe_id}_padlock",
-                                "Sequence": p.metadata["padlock_sequence_5phos"]})
+                if row.get("primer_sequence"):
+                    out.append({"Name": f"{row['record_id']}_{row['probe_id']}_primer",
+                                "Sequence": row["primer_sequence"]})
+                if row.get("padlock_sequence_5phos"):
+                    out.append({"Name": f"{row['record_id']}_{row['probe_id']}_padlock",
+                                "Sequence": row["padlock_sequence_5phos"]})
             else:
-                out.append({"Name": p.probe_id, "Sequence": p.sequence})
+                out.append({"Name": f"{row['record_id']}_{row['probe_id']}",
+                            "Sequence": row["sequence"]})
         with open(path, "w", newline="", encoding="utf-8-sig") as fh:
             writer = csv.DictWriter(fh, fieldnames=["Name", "Sequence"])
             writer.writeheader()
@@ -826,8 +854,8 @@ class ProbeGUI:
         self.status_var.set(f"订购表已导出 {len(out)} 行 → {path}")
 
     def save_report(self):
-        if self.result is None:
-            messagebox.showinfo("提示", "请先运行一次设计。")
+        report = self._require_batch()
+        if report is None:
             return
         path = filedialog.asksaveasfilename(
             defaultextension=".txt", initialfile="design_report.txt",
