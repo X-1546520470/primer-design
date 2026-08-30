@@ -33,21 +33,26 @@ conda install -n Probe -c bioconda -c conda-forge bowtie2
 
 ## 启动
 
-**桌面版（推荐，Tkinter 原生窗口，与 T7 盘 Analysis Tools 同风格）**：
-双击 `run_gui.command`，或在终端：
+### 在新的电脑上（首次）
 
-```bash
-/opt/anaconda3/envs/Probe/bin/python mycoprimer_gui.py
-```
+1. `git clone -b mycoprimer-v2 https://github.com/X-1546520470/primer-design.git`
+   （或下载 zip 解压）
+2. 双击 **`setup.command`** —— 自动完成：Python ≥3.10 环境创建、
+   primer3-py/biopython 等依赖安装、bowtie2 安装（conda 或 Homebrew）。
+3. 双击 **`run_gui.command`** 打开桌面版探针设计界面。
+
+要求：macOS；Python ≥3.10（setup 会自动寻找）；bowtie2（setup 自动装，
+装不上时按提示手动装）。
+
+### 日常启动
+
+- **桌面版（推荐，Tkinter 原生窗口）**：双击 `run_gui.command`
+- **网页版（Streamlit，功能相同）**：双击 `launch.command`
+- 命令行批量：`mycoprimer-batch 基因.fasta --scheme smFISH --out-dir 结果目录`
 
 界面布局：① 靶序列输入 → 左侧方案与参数（设计目标预设一键套用）→
 右侧页签（结果表 / 单条详情 / 设计报告 / 导出 / 基因组与索引 / 使用说明）。
-
-**网页版（Streamlit，功能相同）**：双击 `launch.command` 或
-
-```bash
-/opt/anaconda3/envs/Probe/bin/python -m mycoprimer
-```
+多记录 FASTA（多条 `>基因名`）会自动逐基因批量设计。
 
 ## 启动（旧）
 

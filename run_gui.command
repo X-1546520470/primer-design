@@ -1,18 +1,8 @@
 #!/bin/zsh
-# MycoPrimerV2 桌面版双击启动脚本（Tkinter 原生窗口，无需浏览器）
+# MycoPrimerV2 桌面版双击启动脚本（Tkinter 原生窗口，无需浏览器）。
+# 部署：首次使用请先双击 setup.command。
 set -euo pipefail
-
 APP_DIR="${0:A:h}"
-APP_PYTHON="/opt/anaconda3/envs/Probe/bin/python"
-
-if [[ ! -x "$APP_PYTHON" ]]; then
-  print -u2 "找不到 Probe 环境：$APP_PYTHON"
-  print -u2 "请先确认 /opt/anaconda3/envs/Probe 已安装。"
-  read -r "?按回车键关闭…"
-  exit 1
-fi
-
-export PYTHONNOUSERSITE=1
-export PATH="/opt/anaconda3/envs/Probe/bin:$PATH"
 cd "$APP_DIR"
+source "$APP_DIR/_find_python.sh"
 exec "$APP_PYTHON" mycoprimer_gui.py
