@@ -33,6 +33,24 @@ conda install -n Probe -c bioconda -c conda-forge bowtie2
 
 ## 启动
 
+**桌面版（推荐，Tkinter 原生窗口，与 T7 盘 Analysis Tools 同风格）**：
+双击 `run_gui.command`，或在终端：
+
+```bash
+/opt/anaconda3/envs/Probe/bin/python mycoprimer_gui.py
+```
+
+界面布局：① 靶序列输入 → 左侧方案与参数（设计目标预设一键套用）→
+右侧页签（结果表 / 单条详情 / 设计报告 / 导出 / 基因组与索引 / 使用说明）。
+
+**网页版（Streamlit，功能相同）**：双击 `launch.command` 或
+
+```bash
+/opt/anaconda3/envs/Probe/bin/python -m mycoprimer
+```
+
+## 启动（旧）
+
 双击 `launch.command`，或在终端：
 
 ```bash
